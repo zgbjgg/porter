@@ -61,5 +61,5 @@ client (binary term).
 Next versions:
 ======
 
--Must be implement a hang queue when a client is not connected but there is a message in queue.
+-Implement a hang queue when a client is not connected but there is a message in queue.
 
