@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, keep_alive/0, keep_alive/1, send_msg/2]).
+-export([start_link/0, stop/0, keep_alive/0, keep_alive/1, send_msg/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -21,7 +21,7 @@
 
 -include("porter.hrl").
 
--record(state, {lsocket, keep_alive}).
+-record(state, {lsocket, keep_alive, disconnect, connect}).
 
 %%%===================================================================
 %%% API
@@ -35,6 +35,9 @@ keep_alive(Id) ->
 
 send_msg(Id, Msg) ->
     gen_server:call(?MODULE, {send_msg, Id, Msg}).
+
+stop() ->
+    gen_server:call(?MODULE, stop).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -64,8 +67,10 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([Port]) ->
     {ok, Socket} = gen_udp:open(Port, ?PORT_UDP_OPTIONS),
+    {ok, Msgd} = application:get_env(porter, disconnect),
+    {ok, Msgc} = application:get_env(porter, connect),
     io:format("~s [porter] up and running at: ~p\n", [timestamp(), Socket]),
-    {ok, #state{lsocket=Socket, keep_alive=[]}}.
+    {ok, #state{lsocket=Socket, keep_alive=[], disconnect=Msgd, connect=Msgc}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -81,14 +86,16 @@ init([Port]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({send_msg, Id, Msg}, _From, State=#state{lsocket=Socket, keep_alive=Keep}) ->
+handle_call({send_msg, Id, Msg}, _From, State=#state{lsocket=Socket, keep_alive=Keep, disconnect=_Msgd, connect=_Msgc}) ->
     Routing = {Host, Port} = proplists:get_value(Id, Keep),
     _Repl = gen_udp:send(Socket, Host, Port, Msg),
     {reply, {ok, Routing}, State};
-handle_call({keep_alive, 'null'}, _From, State=#state{lsocket=_Socket, keep_alive=Keep}) ->
+handle_call({keep_alive, 'null'}, _From, State=#state{lsocket=_Socket, keep_alive=Keep, disconnect=_Msgd, connect=_Msg}) ->
     {reply, {ok, Keep}, State};
-handle_call({keep_alive, Id}, _From, State=#state{lsocket=_Socket, keep_alive=Keep}) ->
-    {reply, {ok, proplists:get_value(Id, Keep)}, State}.
+handle_call({keep_alive, Id}, _From, State=#state{lsocket=_Socket, keep_alive=Keep, disconnect=_Msgd, connect=_Msgc}) ->
+    {reply, {ok, proplists:get_value(Id, Keep)}, State};
+handle_call(stop, _From, State) ->
+    {stop, normal, ok, State}.
 	    
 
 %%--------------------------------------------------------------------
@@ -116,15 +123,20 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 %% the message is for the first time that someone connect to socket, then
 %% process the message, SIMPLE: IF THE USER IS IN KEEP ALIVE DISCONNECT, OTHERWISE CONNECT !!
-handle_info({udp, _SocketIn, _Host, _Port, <<"disconnect:", Id/binary>>}, #state{lsocket=Socket, keep_alive=Keep}) ->
-    io:format("~s [porter] disconnected: ~p\n", [timestamp(), Id]),
-    {noreply, #state{lsocket=Socket, keep_alive=proplists:delete(Id, Keep)}};
-handle_info({udp, _SocketIn, Host, Port, <<"connect:", Id/binary>>}, #state{lsocket=Socket, keep_alive=Keep}) ->
-    io:format("~s [porter] connected: ~p\n", [timestamp(), Id]),
-    _Repl = gen_udp:send(Socket, Host, Port, <<"connection:keep alive">>),
-    {noreply, #state{lsocket=Socket, keep_alive=[ {Id, {Host, Port}}| Keep ] }};
-handle_info(Info, State) ->
-    io:format("~s [porter] unhandled message: ~p\n", [timestamp(), Info]),
+handle_info({udp, _SocketIn, Host, Port, Incomming}, #state{lsocket=Socket, keep_alive=Keep, disconnect=Msgd, connect=Msgc}) ->
+    [Msgds, Msgcs] = [ erlang:size(B) * 8  || B <- [Msgd, Msgc] ],
+    State = case Incomming of
+	        <<Msgc:Msgcs/bitstring, Id/binary>> ->
+	    	    io:format("~s [porter] connected: ~p\n", [timestamp(), Id]),
+		    _Repl = gen_udp:send(Socket, Host, Port, <<"connection:keep alive">>),
+		    #state{lsocket=Socket, keep_alive=[ {Id, {Host, Port}}| Keep ], disconnect=Msgd, connect=Msgc};
+		<<Msgd:Msgds/bitstring, Id/binary>> ->		
+    		    io:format("~s [porter] disconnected: ~p\n", [timestamp(), Id]),
+    		    #state{lsocket=Socket, keep_alive=proplists:delete(Id, Keep), disconnect=Msgd, connect=Msgc};
+		_                                   ->
+		    io:format("~s [porter] unhandled message: ~p\n", [timestamp(), Incomming]),
+		    #state{lsocket=Socket, keep_alive=Keep, disconnect=Msgd, connect=Msgc}
+	    end,
     {noreply, State}.
 
 %%--------------------------------------------------------------------

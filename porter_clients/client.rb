@@ -22,5 +22,5 @@ class UDPClient
     end
   end
 end
-client = UDPClient.new("127.0.0.1", 2070)
+client = UDPClient.new("192.168.24.134", 2070)
 client.connect
