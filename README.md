@@ -29,7 +29,20 @@ An erlang shell must be opened and info message displayed:
 
 		2013-03-04 13:09:54 [porter] up and running at: #Port<?.???>
 	
-	
+Messaging format to connect & disconnect:
+======
+
+To connect a client the structure for the message is:
+
+			"connect:" + ID 
+
+To disconnect a client the structure for the message is:
+
+			"disconnect:" + ID
+			
+This messages must be sent to the server Porter to notify of a event related to them.
+
+
 Playing with clients:
 ======
 
