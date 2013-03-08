@@ -6,4 +6,4 @@
   {modules,[porter_app, porter_sup, porter_udp]},
   {applications, [kernel,stdlib]},
   {mod, { porter_app, []}},
-  {env, [{port, 2070}, {disconnect_bin, <<"disconnect">>}, {connect_bin, <<"connect">>}]}]}.
+  {env, [{port, 2070}]}]}.
