@@ -15,7 +15,7 @@ class UDPClient
 
   def connect
     @socket = UDPSocket.open
-    @socket.send("ruby", 0, @host, @port)
+    @socket.send("connect:ruby", 0, @host, @port)
     while true
       packet, client = @socket.recvfrom(1024)
       puts('Incomming message: ' + packet)

@@ -85,12 +85,10 @@ handle_call({send_msg, Id, Msg}, _From, State=#state{lsocket=Socket, keep_alive=
     Routing = {Host, Port} = proplists:get_value(Id, Keep),
     _Repl = gen_udp:send(Socket, Host, Port, Msg),
     {reply, {ok, Routing}, State};
+handle_call({keep_alive, 'null'}, _From, State=#state{lsocket=_Socket, keep_alive=Keep}) ->
+    {reply, {ok, Keep}, State};
 handle_call({keep_alive, Id}, _From, State=#state{lsocket=_Socket, keep_alive=Keep}) ->
-    Reply = case Id of 
-		'null' -> Keep;
-		_      -> proplists:get_value(Id, Keep)
-	    end,
-    {reply, {ok, Reply}, State}.
+    {reply, {ok, proplists:get_value(Id, Keep)}, State}.
 	    
 
 %%--------------------------------------------------------------------
@@ -117,11 +115,14 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 %% the message is for the first time that someone connect to socket, then
-%% process the message
-handle_info({udp, _SocketIn, Host, Port, Id}, #state{lsocket=Socket, keep_alive=Keep}) ->
+%% process the message, SIMPLE: IF THE USER IS IN KEEP ALIVE DISCONNECT, OTHERWISE CONNECT !!
+handle_info({udp, _SocketIn, _Host, _Port, <<"disconnect:", Id/binary>>}, #state{lsocket=Socket, keep_alive=Keep}) ->
+    io:format("~s [porter] disconnected: ~p\n", [timestamp(), Id]),
+    {noreply, #state{lsocket=Socket, keep_alive=proplists:delete(Id, Keep)}};
+handle_info({udp, _SocketIn, Host, Port, <<"connect:", Id/binary>>}, #state{lsocket=Socket, keep_alive=Keep}) ->
     io:format("~s [porter] connected: ~p\n", [timestamp(), Id]),
     _Repl = gen_udp:send(Socket, Host, Port, <<"connection:keep alive">>),
-    {noreply, #state{lsocket=Socket, keep_alive=Keep ++ [{Id, {Host, Port}}]}};
+    {noreply, #state{lsocket=Socket, keep_alive=[ {Id, {Host, Port}}| Keep ] }};
 handle_info(Info, State) ->
     io:format("~s [porter] unhandled message: ~p\n", [timestamp(), Info]),
     {noreply, State}.

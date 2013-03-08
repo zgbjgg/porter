@@ -8,7 +8,7 @@
 
 -module(client).
 -export([connect/0]).
--define(ERLANG, <<"erlang">>).
+-define(ERLANG, <<"connect:erlang">>).
 
 connect() ->
     {ok, Socket} = gen_udp:open(0, [binary, {active, true}, {reuseaddr, true}]),
