@@ -15,7 +15,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
+	 terminate/2, code_change/3,set_structure_msg/1]).
 
 -define(SERVER, ?MODULE).
 
@@ -35,6 +35,9 @@ keep_alive(Id) ->
 
 send_msg(Id, Msg) ->
     gen_server:call(?MODULE, {send_msg, Id, Msg}).
+
+set_structure_msg(NewMsg) ->
+    gen_server:call(?MODULE, {set_structure_msg, NewMsg}).
 
 stop() ->
     gen_server:call(?MODULE, stop).
@@ -86,6 +89,16 @@ init([Port]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({set_structure_msg, NewMsg}, _From, _State=#state{lsocket=Socket, keep_alive=Keep, disconnect=Msgd, connect=Msgc}) ->     
+    NewMsgc =  case  proplists:get_value(connect, NewMsg,'null') of 
+               'null'  ->  Msgc;
+                Valc    -> Valc
+               end,
+    NewMsgd =  case proplists:get_value(disconnect, NewMsg,'null') of
+               'null'  ->  Msgd;
+                Vald    -> Vald
+               end,
+    {reply, {ok, {NewMsgc,NewMsgd}}, #state{lsocket=Socket, keep_alive=Keep, disconnect=NewMsgd, connect=NewMsgc}};         
 handle_call({send_msg, Id, Msg}, _From, State=#state{lsocket=Socket, keep_alive=Keep, disconnect=_Msgd, connect=_Msgc}) ->
     Routing = {Host, Port} = proplists:get_value(Id, Keep),
     _Repl = gen_udp:send(Socket, Host, Port, Msg),
