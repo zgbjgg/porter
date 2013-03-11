@@ -67,6 +67,13 @@ NOTE: the first argument on the function porter:send_msg/2 is the client id, it 
 to the server for the first time, the first message (client -> server), the second argument is the message for the 
 client (binary term).
 
+Getting connected clients
+======
+
+To get all connected clients use:
+
+		> {ok, Clients} = porter:keep_alive().
+		......
 
 Next versions:
 ======
