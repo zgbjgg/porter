@@ -32,15 +32,12 @@ An erlang shell must be opened and info message displayed:
 Messaging format to connect & disconnect:
 ======
 
-To connect a client the structure for the message is:
+To connect a client the structure for the message could be set with (in the erlang shell):
 
-			"connect:" + ID 
-
-To disconnect a client the structure for the message is:
-
-			"disconnect:" + ID
+			> porter:set_structure_msg([{connect, "connect:"}, {disconnect, "disconnect:"}]). 
 			
-This messages must be sent to the server Porter to notify of a event related to them.
+This messages must be sent to the server Porter to notify of a event related to them, the structure is a string
+with any word and optionally at the end of the string append a delimiter character.
 
 
 Playing with clients:
