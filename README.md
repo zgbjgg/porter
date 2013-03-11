@@ -1,8 +1,6 @@
 Porter
 ======
 
-[![Home](http://embassies.gov.il/mfa_Graphics/listsContent/icon_dialCode.gif)]
-
 Broadcast UDP over Erlang
 
 Provides the managment of clients connected to server, by provide an ID, also
