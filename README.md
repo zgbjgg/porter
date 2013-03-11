@@ -1,7 +1,7 @@
 Porter
 ======
 
-[![Home]](https://github.com/jorgegarrido/porter.git)
+[![Home](https://github.com/jorgegarrido/porter.git)]
 
 Broadcast UDP over Erlang
 
