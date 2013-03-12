@@ -76,6 +76,27 @@ porter_send_message_test_() ->
 		?assertEqual(<<"message2">>, IncommingMsg2)
             end)}}.
 
+
+porter_set_message_test_() ->
+    {setup,
+      fun setup/0,
+      fun cleanup/1,
+      {timeout, 60,
+        ?_test(
+            begin
+                {ok,_} = porter:set_structure_msg([{connect,<<"connect=">>},{disconnect,<<"disconnect=">>}]),
+                {ok, Socket} = connect_set_message(),      
+		Message = reply(Socket), 
+		?assertEqual(?CONN_ALIVE, Message),
+		{ok, _} = porter:send_msg(?CLIENTID, <<"message1">>),
+		IncommingMsg1 = reply(Socket),
+		?assertEqual(<<"message1">>, IncommingMsg1),
+                ok = disconnect_set_message(Socket),
+		IncommingMsg2 = reply(Socket),
+		?assertEqual(?CONN_DEAD, IncommingMsg2)
+            end)}}.
+
+
 %% =============================================================================
 %% Auxiliary and internal functions
 %% -----------------------------------------------------------------------------
@@ -106,3 +127,20 @@ disconnect(Socket) ->
 %% receive messages from porter server
 reply(Socket) ->
     receive {udp, Socket, _, _, Msg} -> Msg end.	    
+
+%%--------------------------------------------------------------------
+%% connect a client to porter server when the message is modified
+connect_set_message() ->
+    {ok, Socket} = gen_udp:open(0, [binary, {active, true}, {reuseaddr, true}]),
+    ok = gen_udp:send(Socket, "127.0.0.1", 2070, "connect=clientid"),
+    {ok, Socket}.
+
+%%--------------------------------------------------------------------
+%% disconnect a client present in porter server when the message is modified
+disconnect_set_message(Socket) ->
+    ok = gen_udp:send(Socket, "127.0.0.1", 2070, "disconnect=clientid").
+
+
+
+
+
