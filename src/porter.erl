@@ -145,7 +145,8 @@ handle_info({udp, _SocketIn, Host, Port, Incomming}, #state{lsocket=Socket, keep
 		    #state{lsocket=Socket, keep_alive=[ {Id, {Host, Port}}| Keep ], disconnect=Msgd, connect=Msgc};
 		<<Msgd:Msgds/bitstring, Id/binary>> ->		
     		    io:format("~s [porter] disconnected: ~p\n", [timestamp(), Id]),
-    		    #state{lsocket=Socket, keep_alive=proplists:delete(Id, Keep), disconnect=Msgd, connect=Msgc};
+    		    _Repl = gen_udp:send(Socket, Host, Port, <<"connection:dead">>),
+		    #state{lsocket=Socket, keep_alive=proplists:delete(Id, Keep), disconnect=Msgd, connect=Msgc};
 		_                                   ->
 		    io:format("~s [porter] unhandled message: ~p\n", [timestamp(), Incomming]),
 		    #state{lsocket=Socket, keep_alive=Keep, disconnect=Msgd, connect=Msgc}
